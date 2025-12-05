@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gradient Tester Prototyp</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --sidebar-bg: #1a1a1a;
+            --text-color: #ffffff;
+            --accent-color: #4a4a4a;
+            --active-color: #ffffff;
+            --modal-bg: #2a2a2a;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: sans-serif;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        #app-container {
+            display: flex;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        /* --- Sidebar --- */
+        #sidebar {
+            width: 100%;
+            height: auto;
+            max-height: 40vh;
+            background-color: var(--sidebar-bg);
+            color: var(--text-color);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            z-index: 20;
+            position: relative;
+        }
+
+        @media (min-width: 768px) {
+            #app-container { flex-direction: row; }
+            #sidebar { width: 340px; height: 100%; max-height: none; }
+        }
+
+        h1 { font-size: 1.2rem; margin: 0; display: flex; justify-content: space-between; align-items: center; }
+
+        .control-section-title {
+            font-weight: bold;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #fff;
+            margin-bottom: 8px;
+            display: block;
+            border-bottom: 1px solid #333;
+            padding-bottom: 4px;
+        }
+
+        /* --- Color Previews --- */
+        .color-preview-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .color-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #333;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .color-row:hover { background: #444; }
+        
+        /* Klasse für inaktive Zeilen im Unicolor Mode */
+        .color-row.disabled-state {
+            opacity: 0.3;
+            filter: grayscale(100%);
+        }
+        .color-row.disabled-state:hover {
+            opacity: 0.6; /* Feedback, dass man es wieder aktivieren kann */
+            background: #444;
+        }
+
+        .color-label-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .color-label { font-size: 0.8rem; font-weight: bold; }
+        .color-sublabel { font-size: 0.65rem; color: #aaa; }
+
+        .color-swatch-large {
+            width: 50px;
+            height: 25px;
+            border: 2px solid #555;
+            border-radius: 4px;
+            background-image: linear-gradient(45deg, #808080 25%, transparent 25%), linear-gradient(-45deg, #808080 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #808080 75%), linear-gradient(-45deg, transparent 75%, #808080 75%);
+            background-size: 8px 8px;
+        }
+        
+        .swatch-fill { width: 100%; height: 100%; display: block; }
+
+        /* --- Unicolor Button --- */
+        .unicolor-btn {
+            width: 100%;
+            margin-top: 5px;
+            background: #333;
+            color: #aaa;
+            border: 1px dashed #555;
+            padding: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .unicolor-btn:hover { background: #444; color: white; border-color: #888; }
+        
+        .unicolor-btn.active {
+            background: #2563eb;
+            color: white;
+            border-style: solid;
+            border-color: #60a5fa;
+        }
+
+        /* --- Modal --- */
+        #color-modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 50; display: none;
+            justify-content: center; align-items: center; backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: var(--modal-bg); padding: 20px; border-radius: 10px;
+            width: 90%; max-width: 400px; max-height: 80vh; overflow-y: auto;
+            color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .palette-section { margin-bottom: 15px; }
+        .palette-section h3 { margin: 0 0 5px 0; font-size: 0.8rem; color: #888; text-transform: uppercase; }
+        
+        .palette-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+
+        .palette-btn {
+            width: 100%; aspect-ratio: 1; border-radius: 50%;
+            border: 2px solid transparent; cursor: pointer; transition: transform 0.1s;
+        }
+        .palette-btn:hover { transform: scale(1.15); border-color: white; }
+        
+        .no-color-btn {
+            background: repeating-linear-gradient(45deg, #606060, #606060 5px, #404040 5px, #404040 10px);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.7rem; color: #ccc; border: 1px dashed #888;
+        }
+
+        /* --- Global Controls --- */
+        .btn-group { display: flex; gap: 10px; margin-top: 5px; }
+        .icon-btn {
+            flex: 1; height: 40px; background: var(--accent-color);
+            border: 2px solid transparent; color: var(--text-color); cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 0.75rem; border-radius: 6px; transition: background 0.2s;
+        }
+        .icon-btn:hover { background: #5a5a5a; }
+        .icon-btn.active { background: var(--accent-color); border-color: var(--active-color); font-weight: bold; }
+
+        .export-btn {
+            background: #2563eb; color: white; border: none; padding: 5px 10px;
+            border-radius: 4px; font-size: 0.8rem; cursor: pointer;
+        }
+
+        /* --- Main Canvas --- */
+        #main-area { flex-grow: 1; position: relative; background-color: #ffffff; overflow: hidden; }
+        #background-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; }
+        #interaction-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: crosshair; touch-action: none; }
+        
+        #drag-indicator { stroke: #333; stroke-width: 2; stroke-dasharray: 5,5; pointer-events: none; display: none; filter: drop-shadow(0px 0px 2px white); }
+        #start-point-indicator { fill: white; stroke: black; stroke-width: 1; display: none; pointer-events: none; }
+
+    </style>
+</head>
+<body>
+
+<!-- Color Picker Modal -->
+<div id="color-modal">
+    <div class="modal-content">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+            <h2 style="font-size: 1.2rem; font-weight: bold;">Farbe wählen</h2>
+            <button id="close-modal" style="background:none; border:none; color:white; font-size: 1.5rem; cursor:pointer;">&times;</button>
+        </div>
+        
+        <div class="palette-section">
+            <h3>Optionen</h3>
+            <div class="palette-grid" style="grid-template-columns: 1fr;">
+                <button class="palette-btn no-color-btn" style="width: auto; border-radius: 4px; aspect-ratio: auto; height: 35px;" data-color="transparent">Keine Farbe / Transparent</button>
+            </div>
+        </div>
+        <div id="modal-palette-container"></div>
+    </div>
+</div>
+
+<div id="app-container">
+    <aside id="sidebar">
+        <h1>
+            <span>Gradient Lab</span>
+            <button class="export-btn" id="copy-css-btn">CSS Kopieren</button>
+        </h1>
+
+        <!-- SEKTION HINTERGRUND -->
+        <div>
+            <span class="control-section-title">Hintergrund</span>
+            <div class="color-preview-container">
+                <div class="color-row" id="bg-row-1" onclick="openColorModal('bg', 'color1')">
+                    <div class="color-label-area">
+                        <span class="color-label">Start</span>
+                        <span class="color-sublabel" id="bg-hex-1">#000000</span>
+                    </div>
+                    <div class="color-swatch-large"><div class="swatch-fill" id="bg-swatch-1"></div></div>
+                </div>
+
+                <div class="color-row" id="bg-row-mid">
+                    <div class="color-label-area" onclick="resetMix('bg')">
+                        <span class="color-label">Mix</span>
+                        <span class="color-sublabel" id="bg-hex-mid">Auto</span>
+                    </div>
+                    <div class="color-swatch-large" onclick="openColorModal('bg', 'colorMid')">
+                        <div class="swatch-fill" id="bg-swatch-mid"></div>
+                    </div>
+                </div>
+
+                <div class="color-row" id="bg-row-2" onclick="openColorModal('bg', 'color2')">
+                    <div class="color-label-area">
+                        <span class="color-label">Ende</span>
+                        <span class="color-sublabel" id="bg-hex-2">#000000</span>
+                    </div>
+                    <div class="color-swatch-large"><div class="swatch-fill" id="bg-swatch-2"></div></div>
+                </div>
+            </div>
+            <button class="unicolor-btn" id="bg-unicolor-btn" onclick="toggleUnicolor('bg')">Unicolor (Nur Startfarbe)</button>
+        </div>
+
+        <!-- SEKTION OBJEKT (PLUS) -->
+        <div>
+            <span class="control-section-title">Plus (Objekt)</span>
+            <div class="color-preview-container">
+                <div class="color-row" id="obj-row-1" onclick="openColorModal('obj', 'color1')">
+                    <div class="color-label-area">
+                        <span class="color-label">Start</span>
+                        <span class="color-sublabel" id="obj-hex-1">#000000</span>
+                    </div>
+                    <div class="color-swatch-large"><div class="swatch-fill" id="obj-swatch-1"></div></div>
+                </div>
+
+                <div class="color-row" id="obj-row-mid">
+                    <div class="color-label-area" onclick="resetMix('obj')">
+                        <span class="color-label">Mix</span>
+                        <span class="color-sublabel" id="obj-hex-mid">Auto</span>
+                    </div>
+                    <div class="color-swatch-large" onclick="openColorModal('obj', 'colorMid')">
+                        <div class="swatch-fill" id="obj-swatch-mid"></div>
+                    </div>
+                </div>
+
+                <div class="color-row" id="obj-row-2" onclick="openColorModal('obj', 'color2')">
+                    <div class="color-label-area">
+                        <span class="color-label">Ende</span>
+                        <span class="color-sublabel" id="obj-hex-2">#000000</span>
+                    </div>
+                    <div class="color-swatch-large"><div class="swatch-fill" id="obj-swatch-2"></div></div>
+                </div>
+            </div>
+            <button class="unicolor-btn" id="obj-unicolor-btn" onclick="toggleUnicolor('obj')">Unicolor (Nur Startfarbe)</button>
+        </div>
+
+
+        <!-- STEUERUNG (Global für Interaktion) -->
+        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 15px;">
+            <div>
+                <span class="control-section-title">Interaktion / Modus für:</span>
+                <div class="btn-group">
+                    <button class="icon-btn active" data-type="target" data-value="bg">Hintergrund</button>
+                    <button class="icon-btn" data-type="target" data-value="object">Plus (Objekt)</button>
+                </div>
+            </div>
+
+            <div>
+                <span class="control-section-title">Modus:</span>
+                <div class="btn-group">
+                    <button class="icon-btn active" data-type="mode" data-value="circular">Radial</button>
+                    <button class="icon-btn" data-type="mode" data-value="straight">Linear</button>
+                    <button class="icon-btn" data-type="mode" data-value="cloud">Cloud</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main id="main-area">
+        <div id="background-layer"></div>
+
+        <svg id="interaction-svg" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <!-- Linear Gradient Defs für Objekt -->
+                <linearGradient id="obj-linear-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" id="obj-l-stop1" stop-color="#008cff"/>
+                    <stop offset="50%" id="obj-l-stopMid" stop-color="transparent" stop-opacity="0"/>
+                    <stop offset="100%" id="obj-l-stop2" stop-color="#da4162"/>
+                </linearGradient>
+                
+                <!-- Radial Gradient Defs für Objekt -->
+                 <radialGradient id="obj-radial-grad" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                    <stop offset="0%" id="obj-r-stop1" stop-color="#008cff"/>
+                    <stop offset="50%" id="obj-r-stopMid" stop-color="transparent" stop-opacity="0"/>
+                    <stop offset="100%" id="obj-r-stop2" stop-color="#da4162"/>
+                </radialGradient>
+            </defs>
+
+            <!-- OBJEKT: SVG mit der spezifischen Form (Maske) -->
+            <svg id="target-object-container" viewBox="0 0 1680 958" preserveAspectRatio="xMidYMid meet" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; height: 90%; overflow: visible;">
+                <defs>
+                    <mask id="custom-shape-mask">
+                         <!-- Die vom Nutzer bereitgestellte Geometrie (weiße Rechtecke als Maske) -->
+                        <g fill="#ffffff">
+                            <rect x="131.425" y="377.4779375" width="17.15" height="3.0441249999999997"/><rect x="138.4779375" y="370.425" width="3.0441249999999997" height="17.15"/><rect x="114.27499999999999" y="574.4338125" width="51.45000000000001" height="9.132375000000001"/><rect x="135.4338125" y="553.275" width="9.132375000000001" height="51.45000000000001"/><rect x="231.425" y="277.4779375" width="17.15" height="3.0441249999999997"/><rect x="238.4779375" y="270.425" width="3.0441249999999997" height="17.15"/><rect x="237.55" y="478.565125" width="4.9" height="0.86975"/><rect x="239.565125" y="476.55" width="0.86975" height="4.9"/><rect x="224.075" y="576.1733125" width="31.85" height="5.6533750000000005"/><rect x="237.1733125" y="563.075" width="5.6533750000000005" height="31.85"/><rect x="308.15" y="273.346625" width="63.700000000000024" height="11.306750000000005"/><rect x="334.346625" y="247.14999999999998" width="11.306750000000005" height="63.700000000000024"/><rect x="336.325" y="478.3476875" width="7.350000000000001" height="1.3046250000000001"/><rect x="339.3476875" y="475.325" width="1.3046250000000001" height="7.350000000000001"/><rect x="308.15" y="573.346625" width="63.700000000000024" height="11.306750000000005"/><rect x="334.346625" y="547.15" width="11.306750000000005" height="63.700000000000024"/><rect x="427.75" y="276.825625" width="24.499999999999996" height="4.348749999999999"/><rect x="437.825625" y="266.75" width="4.348749999999999" height="24.499999999999996"/><rect x="408.15" y="373.346625" width="63.70000000000001" height="11.306750000000003"/><rect x="434.346625" y="347.15" width="11.306750000000003" height="63.70000000000001"/><rect x="382.425" y="468.7804375" width="115.14999999999998" height="20.439124999999997"/><rect x="429.7804375" y="421.425" width="20.439124999999997" height="115.14999999999998"/><rect x="530.2" y="277.2605" width="19.599999999999994" height="3.4789999999999988"/><rect x="538.2605" y="269.2" width="3.4789999999999988" height="19.599999999999994"/><rect x="475.07500000000005" y="367.4758125" width="129.84999999999994" height="23.048374999999986"/><rect x="528.4758125" y="314.07500000000005" width="23.048374999999986" height="129.84999999999994"/><rect x="636.325" y="278.3476875" width="7.350000000000001" height="1.3046250000000001"/><rect x="639.3476875" y="275.325" width="1.3046250000000001" height="7.350000000000001"/><rect x="566.5000000000001" y="465.95375" width="146.99999999999986" height="26.092499999999976"/><rect x="626.95375" y="405.50000000000006" width="26.092499999999976" height="146.99999999999986"/><rect x="664.0500000000001" y="265.51887500000004" width="151.89999999999986" height="26.962249999999973"/><rect x="726.518875" y="203.05000000000007" width="26.962249999999973" height="151.89999999999986"/><rect x="688.55" y="369.867625" width="102.90000000000002" height="18.264750000000003"/><rect x="730.867625" y="327.55" width="18.264750000000003" height="102.90000000000002"/><rect x="717.95" y="475.086125" width="44.10000000000001" height="7.827750000000002"/><rect x="736.086125" y="456.95" width="7.827750000000002" height="44.10000000000001"/><rect x="837.55" y="78.565125" width="4.9" height="0.86975"/><rect x="839.565125" y="76.55" width="0.86975" height="4.9"/><rect x="832.65" y="277.695375" width="14.7" height="2.60925"/><rect x="838.695375" y="271.65" width="2.60925" height="14.7"/><rect x="837.55" y="378.565125" width="4.9" height="0.86975"/><rect x="839.565125" y="376.55" width="0.86975" height="4.9"/><rect x="832.65" y="477.695375" width="14.7" height="2.60925"/><rect x="838.695375" y="471.65" width="2.60925" height="14.7"/><rect x="892.225" y="70.5199375" width="95.55000000000005" height="16.96012500000001"/><rect x="931.5199375" y="31.224999999999973" width="16.96012500000001" height="95.55000000000005"/><rect x="928.975" y="277.0430625" width="22.049999999999997" height="3.9138749999999995"/><rect x="938.0430625" y="267.975" width="3.9138749999999995" height="22.049999999999997"/><rect x="927.75" y="476.825625" width="24.499999999999996" height="4.348749999999999"/><rect x="937.825625" y="466.75" width="4.348749999999999" height="24.499999999999996"/><rect x="1030.2" y="377.2605" width="19.599999999999998" height="3.4789999999999996"/><rect x="1038.2605" y="369.2" width="3.4789999999999996" height="19.599999999999998"/><rect x="1020.4" y="475.521" width="39.20000000000001" height="6.958000000000001"/><rect x="1036.521" y="459.4" width="6.958000000000001" height="39.20000000000001"/><rect x="1115.5" y="374.65125" width="49.000000000000014" height="8.697500000000002"/><rect x="1135.65125" y="354.5" width="8.697500000000002" height="49.000000000000014"/><rect x="1088.55" y="469.867625" width="102.90000000000002" height="18.264750000000003"/><rect x="1130.867625" y="427.55" width="18.264750000000003" height="102.90000000000002"/><rect x="1236.325" y="378.3476875" width="7.350000000000001" height="1.3046250000000001"/><rect x="1239.3476875" y="375.325" width="1.3046250000000001" height="7.350000000000001"/><rect x="1228.975" y="477.0430625" width="22.049999999999997" height="3.9138749999999995"/><rect x="1238.0430625" y="467.975" width="3.9138749999999995" height="22.049999999999997"/><rect x="1326.525" y="276.6081875" width="26.949999999999996" height="4.783624999999999"/><rect x="1337.6081875" y="265.525" width="4.783624999999999" height="26.949999999999996"/><rect x="1337.55" y="378.565125" width="4.9" height="0.86975"/><rect x="1339.565125" y="376.55" width="0.86975" height="4.9"/><rect x="1319.175" y="475.3035625" width="41.65000000000001" height="7.392875000000002"/><rect x="1336.3035625" y="458.175" width="7.392875000000002" height="41.65000000000001"/><rect x="1298.35" y="671.607125" width="83.30000000000004" height="14.785750000000007"/><rect x="1332.607125" y="637.35" width="14.785750000000007" height="83.30000000000004"/><rect x="1435.1" y="278.13025" width="9.8" height="1.7395"/><rect x="1439.13025" y="274.1" width="1.7395" height="9.8"/><rect x="1414.275" y="374.4338125" width="51.45000000000001" height="9.132375000000001"/><rect x="1435.4338125" y="353.275" width="9.132375000000001" height="51.45000000000001"/><rect x="1536.325" y="578.3476875" width="7.350000000000001" height="1.3046250000000001"/><rect x="1539.3476875" y="575.325" width="1.3046250000000001" height="7.350000000000001"/>
+                        </g>
+                    </mask>
+                </defs>
+                
+                <!-- Das eigentliche Rechteck, das den Gradienten trägt.
+                     Durch die Maske ist der Gradient nur in den Plus-Symbolen sichtbar.
+                     Der Hintergrund (durchsichtig) zeigt den #background-layer -->
+                <rect id="target-object" width="100%" height="100%" x="0" y="0" fill="url(#obj-radial-grad)" mask="url(#custom-shape-mask)" />
+            </svg>
+            
+            <line id="drag-indicator" x1="0" y1="0" x2="0" y2="0" />
+            <circle id="start-point-indicator" r="4" cx="0" cy="0" />
+        </svg>
+    </main>
+</div>
+
+<script>
+    // --- DATEN ---
+    const colorPalette = {
+        'Blue': ['#040066', '#0000ff', '#008cff', '#00d4ff'],
+        'Red': ['#8b0c36', '#da4162', '#ffa6b4'],
+        'Purple': ['#67436a', '#822faa', '#d3beec'],
+        'Yellow': ['#bc9d1b', '#ffd81d', '#ffeda3'],
+        'Orange/Brown': ['#a5581a', '#ff872a', '#ffc390'],
+        'Green': ['#007647', '#00c167', '#c4ebc3'],
+        'Grey/White': ['#000000', '#4c4c4c', '#a6a6a6', '#c7c7c7', '#e5e5e5', '#f7f8f9', '#ffffff']
+    };
+
+    // --- STATUS ---
+    let settings = {
+        bg: {
+            color1: '#040066',
+            color2: '#00d4ff',
+            colorMid: 'transparent',
+            mode: 'cloud',
+            gradientCSS: '',
+            isUnicolor: false // Neues Flag
+        },
+        obj: {
+            color1: '#da4162',
+            color2: '#ffa6b4',
+            colorMid: 'transparent',
+            mode: 'circular',
+            isUnicolor: false // Neues Flag
+        }
+    };
+
+    // Globale aktive Werte für Interaktion
+    let activeTarget = 'bg'; 
+    
+    // Interne State Variablen
+    let isDragging = false;
+    let dragStart = { x: 0, y:0 };
+    let editingContext = { target: null, prop: null };
+
+    // --- DOM ELEMENTE ---
+    const bgLayer = document.getElementById('background-layer');
+    const svgLayer = document.getElementById('interaction-svg');
+    const targetObject = document.getElementById('target-object'); // Updated reference
+    const dragIndicator = document.getElementById('drag-indicator');
+    const startPointIndicator = document.getElementById('start-point-indicator');
+    const copyBtn = document.getElementById('copy-css-btn');
+    const colorModal = document.getElementById('color-modal');
+    const modalPaletteContainer = document.getElementById('modal-palette-container');
+    const closeModalBtn = document.getElementById('close-modal');
+
+
+    // --- INITIALISIERUNG ---
+    function init() {
+        buildModalPalette();
+        setupEventListeners();
+        
+        // Initial Rendering
+        updateUI(); 
+        applyGradient('bg'); 
+        applyGradient('obj'); 
+        
+        // SVG Defaults
+        const gradEl = document.getElementById('obj-radial-grad');
+        gradEl.setAttribute('cx', '50%');
+        gradEl.setAttribute('cy', '50%');
+        gradEl.setAttribute('r', '50%');
+    }
+
+    function buildModalPalette() {
+        modalPaletteContainer.innerHTML = '';
+        for (const [family, colors] of Object.entries(colorPalette)) {
+            const section = document.createElement('div');
+            section.className = 'palette-section';
+            const title = document.createElement('h3');
+            title.textContent = family;
+            section.appendChild(title);
+            const grid = document.createElement('div');
+            grid.className = 'palette-grid';
+            colors.forEach(color => {
+                const btn = document.createElement('button');
+                btn.className = 'palette-btn';
+                btn.style.backgroundColor = color;
+                btn.dataset.color = color;
+                if(color.toLowerCase() === '#ffffff') btn.style.border = '1px solid #ddd';
+                grid.appendChild(btn);
+            });
+            section.appendChild(grid);
+            modalPaletteContainer.appendChild(section);
+        }
+    }
+
+
+    // --- EVENT LISTENER ---
+    function setupEventListeners() {
+        closeModalBtn.addEventListener('click', closeColorModal);
+        colorModal.addEventListener('click', (e) => { if(e.target === colorModal) closeColorModal(); });
+
+        modalPaletteContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('palette-btn')) {
+                selectColor(e.target.dataset.color);
+            }
+        });
+        
+        document.querySelector('.no-color-btn').addEventListener('click', () => selectColor('transparent'));
+
+        // Control Buttons
+        document.querySelectorAll('.icon-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const type = btn.dataset.type;
+                const value = btn.dataset.value;
+
+                if (type === 'target') {
+                    activeTarget = value === 'object' ? 'obj' : 'bg'; 
+                    updateControlButtons();
+                } else if (type === 'mode') {
+                    settings[activeTarget].mode = value;
+                    updateControlButtons();
+                    applyGradient(activeTarget); 
+                }
+            });
+        });
+        
+        copyBtn.addEventListener('click', () => {
+            const css = settings.bg.gradientCSS;
+            if(!css) return;
+            navigator.clipboard.writeText(`background: ${css};`);
+            const oldText = copyBtn.innerText;
+            copyBtn.innerText = "Kopiert!";
+            setTimeout(() => copyBtn.innerText = oldText, 1000);
+        });
+
+        // Pointer Events
+        svgLayer.addEventListener('mousedown', handlePointerDown);
+        window.addEventListener('mousemove', handlePointerMove);
+        window.addEventListener('mouseup', handlePointerUp);
+        svgLayer.addEventListener('touchstart', handlePointerDown, {passive: false});
+        window.addEventListener('touchmove', handlePointerMove, {passive: false});
+        window.addEventListener('touchend', handlePointerUp);
+    }
+
+    // --- MODAL & COLOR LOGIC ---
+    window.openColorModal = function(target, prop) {
+        // Falls Unicolor aktiv ist und wir auf ein inaktives Feld klicken, reaktivieren wir es
+        if (settings[target].isUnicolor && (prop === 'color2' || prop === 'colorMid')) {
+            settings[target].isUnicolor = false;
+            updateUI();
+            applyGradient(target);
+        }
+
+        editingContext = { target, prop };
+        colorModal.style.display = 'flex';
+    }
+
+    window.resetMix = function(target) {
+        // Falls Unicolor aktiv, deaktivieren
+        if (settings[target].isUnicolor) {
+            settings[target].isUnicolor = false;
+        }
+        settings[target].colorMid = 'transparent';
+        updateUI();
+        applyGradient(target);
+    }
+
+    // Ersetzt makeUnicolor: Toggle Funktion
+    window.toggleUnicolor = function(target) {
+        settings[target].isUnicolor = !settings[target].isUnicolor;
+        updateUI();
+        applyGradient(target);
+    }
+
+    function closeColorModal() {
+        colorModal.style.display = 'none';
+        editingContext = { target: null, prop: null };
+    }
+
+    function selectColor(color) {
+        if (!editingContext.target) return;
+        
+        const { target, prop } = editingContext;
+        if (prop !== 'colorMid' && color === 'transparent') color = '#ffffff';
+        
+        settings[target][prop] = color;
+        
+        updateUI();
+        applyGradient(target);
+        closeColorModal();
+    }
+
+    // --- UI UPDATES ---
+    function updateUI() {
+        ['bg', 'obj'].forEach(t => {
+            const s = settings[t];
+            const isUni = s.isUnicolor;
+            
+            // Hex Labels & Swatches
+            document.getElementById(`${t}-hex-1`).textContent = s.color1;
+            document.getElementById(`${t}-swatch-1`).style.backgroundColor = s.color1;
+            
+            document.getElementById(`${t}-hex-2`).textContent = s.color2;
+            document.getElementById(`${t}-swatch-2`).style.backgroundColor = s.color2;
+            
+            // Unicolor Button State
+            const uniBtn = document.getElementById(`${t}-unicolor-btn`);
+            if (isUni) {
+                uniBtn.classList.add('active');
+                uniBtn.textContent = "Unicolor Aktiv (Klick zum Deaktivieren)";
+            } else {
+                uniBtn.classList.remove('active');
+                uniBtn.textContent = "Unicolor (Nur Startfarbe anwenden)";
+            }
+
+            // Disable/Enable Rows visual style
+            const rowMid = document.getElementById(`${t}-row-mid`);
+            const row2 = document.getElementById(`${t}-row-2`);
+            
+            if (isUni) {
+                rowMid.classList.add('disabled-state');
+                row2.classList.add('disabled-state');
+            } else {
+                rowMid.classList.remove('disabled-state');
+                row2.classList.remove('disabled-state');
+            }
+            
+            // Mix Logic
+            const mixEl = document.getElementById(`${t}-swatch-mid`);
+            const mixLabel = document.getElementById(`${t}-hex-mid`);
+            
+            if (s.colorMid === 'transparent') {
+                const c1 = hexToRgb(s.color1);
+                // Wenn Unicolor, mixen wir quasi mit uns selbst für die Vorschau, 
+                // aber visuell ist die Zeile eh ausgegraut. Nehmen wir dennoch s.color2 falls reaktiviert wird.
+                const c2 = hexToRgb(s.color2);
+                if(c1 && c2) {
+                    const r = Math.round((c1.r + c2.r)/2);
+                    const g = Math.round((c1.g + c2.g)/2);
+                    const b = Math.round((c1.b + c2.b)/2);
+                    mixEl.style.backgroundColor = `rgb(${r},${g},${b})`;
+                }
+                mixLabel.textContent = "Auto";
+                mixEl.parentElement.style.opacity = "0.7";
+            } else {
+                mixEl.style.backgroundColor = s.colorMid;
+                mixLabel.textContent = s.colorMid;
+                mixEl.parentElement.style.opacity = "1";
+            }
+        });
+        
+        updateControlButtons();
+        updateSVGStops(); 
+    }
+
+    function updateControlButtons() {
+        document.querySelectorAll('.icon-btn[data-type="target"]').forEach(btn => {
+            const val = btn.dataset.value === 'object' ? 'obj' : 'bg';
+            btn.classList.toggle('active', val === activeTarget);
+        });
+        
+        const currentMode = settings[activeTarget].mode;
+        document.querySelectorAll('.icon-btn[data-type="mode"]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.value === currentMode);
+        });
+    }
+    
+    function updateSVGStops() {
+        const s = settings.obj;
+        // Wenn Unicolor, überschreiben wir für die Stops temporär alles mit color1
+        const c1 = s.color1;
+        const c2 = s.isUnicolor ? s.color1 : s.color2;
+        const mid = s.isUnicolor ? 'transparent' : s.colorMid;
+
+        const stops = [
+            { id: 'obj-l', c1: c1, c2: c2, mid: mid },
+            { id: 'obj-r', c1: c1, c2: c2, mid: mid }
+        ];
+
+        stops.forEach(item => {
+            document.getElementById(`${item.id}-stop1`).setAttribute('stop-color', item.c1);
+            document.getElementById(`${item.id}-stop2`).setAttribute('stop-color', item.c2);
+            
+            const midStop = document.getElementById(`${item.id}-stopMid`);
+            if (item.mid !== 'transparent') {
+                midStop.setAttribute('stop-color', item.mid);
+                midStop.setAttribute('stop-opacity', '1');
+                midStop.setAttribute('offset', '50%');
+            } else {
+                midStop.setAttribute('stop-opacity', '0');
+            }
+        });
+    }
+
+    // --- INTERACTION & GRADIENT LOGIC ---
+
+    function getPointerPos(e) {
+        if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        return { x: e.clientX, y: e.clientY };
+    }
+
+    function handlePointerDown(e) {
+        if (e.type === 'touchstart') e.preventDefault();
+        
+        const mode = settings[activeTarget].mode;
+        
+        if (mode === 'cloud') {
+            applyGradient(activeTarget); 
+            return;
+        }
+
+        const pos = getPointerPos(e);
+        isDragging = true;
+        dragStart = { x: pos.x, y: pos.y };
+
+        const rect = svgLayer.getBoundingClientRect();
+        const localX = pos.x - rect.left;
+        const localY = pos.y - rect.top;
+
+        if (mode === 'straight') {
+            dragIndicator.style.display = 'block';
+            startPointIndicator.style.display = 'block';
+            dragIndicator.setAttribute('x1', localX);
+            dragIndicator.setAttribute('y1', localY);
+            dragIndicator.setAttribute('x2', localX);
+            dragIndicator.setAttribute('y2', localY);
+            startPointIndicator.setAttribute('cx', localX);
+            startPointIndicator.setAttribute('cy', localY);
+        } else if (mode === 'circular') {
+            applyGradientWithCoords(activeTarget, pos.x, pos.y, pos.x, pos.y + 100);
+        }
+    }
+
+    function handlePointerMove(e) {
+        if (!isDragging) return;
+        const mode = settings[activeTarget].mode;
+        if (mode === 'cloud') return;
+        if (e.type === 'touchmove') e.preventDefault();
+
+        const pos = getPointerPos(e);
+        const rect = svgLayer.getBoundingClientRect();
+
+        if (mode === 'straight') {
+            dragIndicator.setAttribute('x2', pos.x - rect.left);
+            dragIndicator.setAttribute('y2', pos.y - rect.top);
+        } else if (mode === 'circular') {
+            applyGradientWithCoords(activeTarget, dragStart.x, dragStart.y, pos.x, pos.y);
+        }
+    }
+
+    function handlePointerUp(e) {
+        if (!isDragging) return;
+        const mode = settings[activeTarget].mode;
+        
+        if (mode === 'straight') {
+            const x1 = parseFloat(dragIndicator.getAttribute('x1'));
+            const y1 = parseFloat(dragIndicator.getAttribute('y1'));
+            const x2 = parseFloat(dragIndicator.getAttribute('x2'));
+            const y2 = parseFloat(dragIndicator.getAttribute('y2'));
+            const rect = svgLayer.getBoundingClientRect();
+            applyGradientWithCoords(activeTarget, x1 + rect.left, y1 + rect.top, x2 + rect.left, y2 + rect.top);
+        }
+
+        isDragging = false;
+        dragIndicator.style.display = 'none';
+        startPointIndicator.style.display = 'none';
+    }
+
+    function applyGradient(target) {
+        if (settings[target].mode === 'cloud') {
+            applyGradientWithCoords(target, 0, 0, 0, 0); 
+        } else {
+             const cx = window.innerWidth/2;
+             const cy = window.innerHeight/2;
+             applyGradientWithCoords(target, cx, cy, cx, cy + 200);
+        }
+    }
+
+    function applyGradientWithCoords(target, x1, y1, x2, y2) {
+        const rect = svgLayer.getBoundingClientRect();
+        const rx1 = x1 - rect.left;
+        const ry1 = y1 - rect.top;
+        const rx2 = x2 - rect.left;
+        const ry2 = y2 - rect.top;
+
+        const s = settings[target];
+        let cssStyle = '';
+        let svgFill = '';
+
+        // Colors Generator
+        const getColorsCSS = () => { 
+             // Wenn Unicolor aktiv, gib nur die Startfarbe zurück (Solid)
+             if (s.isUnicolor) {
+                 return `${s.color1}, ${s.color1}`;
+             }
+             if (s.colorMid !== 'transparent') {
+                 return `${s.color1}, ${s.colorMid}, ${s.color2}`;
+             }
+             return `${s.color1}, ${s.color2}`;
+        };
+
+        switch (s.mode) {
+            case 'circular': {
+                const dist = Math.hypot(rx2 - rx1, ry2 - ry1);
+                const r = dist > 5 ? dist : rect.width/2;
+                
+                if (target === 'bg') {
+                    cssStyle = `radial-gradient(circle at ${rx1}px ${ry1}px, ${getColorsCSS()})`;
+                } else {
+                    const gradEl = document.getElementById('obj-radial-grad');
+                    gradEl.setAttribute('cx', `${(rx1/rect.width)*100}%`);
+                    gradEl.setAttribute('cy', `${(ry1/rect.height)*100}%`);
+                    gradEl.setAttribute('r', `${(r/rect.width)*100}%`); 
+                    svgFill = 'url(#obj-radial-grad)';
+                }
+                break;
+            }
+            case 'straight': {
+                const angle = Math.atan2(ry2 - ry1, rx2 - rx1) * 180 / Math.PI + 90;
+                
+                if (target === 'bg') {
+                    cssStyle = `linear-gradient(${angle}deg, ${getColorsCSS()})`;
+                } else {
+                    const gradEl = document.getElementById('obj-linear-grad');
+                    gradEl.setAttribute('gradientTransform', `rotate(${angle-90} 0.5 0.5)`);
+                    svgFill = 'url(#obj-linear-grad)';
+                }
+                break;
+            }
+            case 'cloud': {
+                // Cloud Unicolor Fallback: Solid Background
+                if (s.isUnicolor) {
+                    cssStyle = s.color1;
+                    svgFill = s.color1; // SVG can take hex directly
+                } else {
+                    const blobs = [];
+                    const numBlobs = 3 + Math.floor(Math.random() * 3);
+                    for(let i=0; i<numBlobs; i++) {
+                        const bx = Math.floor(Math.random() * 100);
+                        const by = Math.floor(Math.random() * 100);
+                        const color = Math.random() > 0.5 ? s.color1 : s.color2;
+                        const midC = s.colorMid !== 'transparent' ? s.colorMid : 'transparent';
+                        const usedColor = (Math.random() > 0.8 && midC !== 'transparent') ? midC : color;
+                        blobs.push(`radial-gradient(circle at ${bx}% ${by}%, ${usedColor}, transparent 60%)`);
+                    }
+                    const base = `linear-gradient(135deg, ${s.color1}, ${s.color2})`;
+                    cssStyle = blobs.join(', ') + ', ' + base;
+                    svgFill = 'url(#obj-radial-grad)'; 
+                }
+                break;
+            }
+        }
+
+        if (target === 'bg') {
+            bgLayer.style.background = cssStyle;
+            settings.bg.gradientCSS = cssStyle;
+        } else {
+            targetObject.setAttribute('fill', svgFill); // Updated reference
+        }
+    }
+
+    function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
+    }
+
+    init();
+
+</script>
+</body>
+</html>
