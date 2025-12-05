@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gradient Tester Prototyp</title>
+    <title>GD Gradient Lab</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root {
@@ -36,11 +36,10 @@
             max-height: 40vh;
             background-color: var(--sidebar-bg);
             color: var(--text-color);
-            padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            overflow-y: auto;
+            gap: 0; /* Gap handled by padding/layout */
+            overflow: hidden; /* Scroll nur im Tab-Content */
             flex-shrink: 0;
             z-index: 20;
             position: relative;
@@ -48,10 +47,105 @@
 
         @media (min-width: 768px) {
             #app-container { flex-direction: row; }
-            #sidebar { width: 340px; height: 100%; max-height: none; }
+            #sidebar { width: 360px; height: 100%; max-height: none; }
         }
 
-        h1 { font-size: 1.2rem; margin: 0; display: flex; justify-content: space-between; align-items: center; }
+        /* Title Area */
+        .sidebar-header {
+            padding: 20px 15px 10px 15px;
+            flex-shrink: 0;
+        }
+
+        h1 { 
+            font-size: 1.8rem; /* Größer */
+            font-weight: 800; 
+            margin: 0 0 10px 0; 
+            letter-spacing: -0.05em;
+            background: linear-gradient(90deg, #fff, #aaa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Tabs */
+        .tab-nav {
+            display: flex;
+            padding: 0 15px;
+            border-bottom: 1px solid #333;
+            margin-bottom: 15px;
+        }
+        
+        .tab-btn {
+            background: none;
+            border: none;
+            color: #888;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+            position: relative;
+        }
+        
+        .tab-btn.active {
+            color: white;
+        }
+        
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: white;
+        }
+
+        /* Scrollable Content Area within Sidebar */
+        .sidebar-content {
+            padding: 0 15px 20px 15px;
+            overflow-y: auto;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        /* Preset Grid */
+        #preset-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .preset-card {
+            background: #333;
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.1s;
+            border: 1px solid #444;
+        }
+        .preset-card:hover { transform: scale(1.02); border-color: #666; }
+        
+        .preset-preview {
+            height: 60px;
+            width: 100%;
+            position: relative;
+        }
+        .preset-obj-preview {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px; height: 20px;
+            border-radius: 50%; /* Kleiner Kreis als Indikator */
+            box-shadow: 0 0 4px rgba(0,0,0,0.5);
+        }
+        
+        .preset-info {
+            padding: 5px;
+            font-size: 0.7rem;
+            color: #aaa;
+            text-align: center;
+        }
 
         .control-section-title {
             font-weight: bold;
@@ -60,17 +154,28 @@
             letter-spacing: 1px;
             color: #fff;
             margin-bottom: 8px;
-            display: block;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             border-bottom: 1px solid #333;
             padding-bottom: 4px;
         }
 
-        /* --- Color Previews --- */
-        .color-preview-container {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
+        .color-section-container {
+            padding: 10px;
+            border: 2px solid transparent; 
+            border-radius: 8px;
+            transition: border-color 0.2s, background-color 0.2s;
+            cursor: pointer;
         }
+
+        .color-section-container:hover { background-color: rgba(255, 255, 255, 0.02); }
+        .color-section-container.active-edit-section {
+            border-color: rgba(255, 255, 255, 0.8);
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .color-preview-container { display: flex; flex-direction: column; gap: 6px; }
 
         .color-row {
             display: flex;
@@ -78,115 +183,95 @@
             justify-content: space-between;
             background: #333;
             padding: 4px 10px;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
             transition: all 0.2s;
         }
         .color-row:hover { background: #444; }
         
-        /* Klasse für inaktive Zeilen im Unicolor Mode */
-        .color-row.disabled-state {
-            opacity: 0.3;
-            filter: grayscale(100%);
-        }
-        .color-row.disabled-state:hover {
-            opacity: 0.6; /* Feedback, dass man es wieder aktivieren kann */
-            background: #444;
-        }
+        .color-row.disabled-state { opacity: 0.3; filter: grayscale(100%); pointer-events: none; }
 
-        .color-label-area {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        
+        .color-label-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
         .color-label { font-size: 0.8rem; font-weight: bold; }
         .color-sublabel { font-size: 0.65rem; color: #aaa; }
 
         .color-swatch-large {
-            width: 50px;
-            height: 25px;
-            border: 2px solid #555;
-            border-radius: 4px;
+            width: 50px; height: 25px;
+            border: 1px solid #555; border-radius: 3px;
             background-image: linear-gradient(45deg, #808080 25%, transparent 25%), linear-gradient(-45deg, #808080 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #808080 75%), linear-gradient(-45deg, transparent 75%, #808080 75%);
             background-size: 8px 8px;
         }
-        
         .swatch-fill { width: 100%; height: 100%; display: block; }
 
-        /* --- Unicolor Button --- */
         .unicolor-btn {
-            width: 100%;
-            margin-top: 5px;
-            background: #333;
-            color: #aaa;
-            border: 1px dashed #555;
-            padding: 4px;
-            font-size: 0.75rem;
-            cursor: pointer;
-            border-radius: 4px;
-            transition: all 0.2s;
+            width: 100%; margin-top: 5px; background: #333; color: #aaa;
+            border: 1px dashed #555; padding: 4px; font-size: 0.75rem;
+            cursor: pointer; border-radius: 4px; transition: all 0.2s;
         }
         .unicolor-btn:hover { background: #444; color: white; border-color: #888; }
+        .unicolor-btn.active { background: #2563eb; color: white; border-style: solid; border-color: #60a5fa; }
         
-        .unicolor-btn.active {
-            background: #2563eb;
-            color: white;
-            border-style: solid;
-            border-color: #60a5fa;
+        .header-checkbox-label {
+            display: flex; align-items: center; gap: 6px; font-size: 0.7rem;
+            color: #ccc; cursor: pointer; text-transform: none; font-weight: normal; letter-spacing: 0;
         }
+        .header-checkbox-label input { width: 14px; height: 14px; accent-color: #2563eb; cursor: pointer; }
 
-        /* --- Modal --- */
+        /* --- Modal Kompakt --- */
         #color-modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.8); z-index: 50; display: none;
-            justify-content: center; align-items: center; backdrop-filter: blur(5px);
+            justify-content: center; align-items: center; backdrop-filter: blur(3px);
         }
 
         .modal-content {
-            background: var(--modal-bg); padding: 20px; border-radius: 10px;
-            width: 90%; max-width: 400px; max-height: 80vh; overflow-y: auto;
-            color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            background: #222; padding: 15px; border-radius: 8px;
+            width: auto; max-width: 90%; max-height: 90vh; overflow-y: auto;
+            color: white; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            border: 1px solid #444;
         }
 
-        .palette-section { margin-bottom: 15px; }
-        .palette-section h3 { margin: 0 0 5px 0; font-size: 0.8rem; color: #888; text-transform: uppercase; }
+        .palette-section { margin-bottom: 10px; }
+        .palette-section h3 { margin: 0 0 3px 0; font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight: bold; }
         
-        .palette-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+        /* Dichteres Grid für Kompaktheit */
+        .palette-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
 
         .palette-btn {
-            width: 100%; aspect-ratio: 1; border-radius: 50%;
-            border: 2px solid transparent; cursor: pointer; transition: transform 0.1s;
+            width: 30px; height: 20px; /* Rechteckig & Klein */
+            border-radius: 2px;
+            border: 1px solid transparent; cursor: pointer; transition: transform 0.1s;
         }
-        .palette-btn:hover { transform: scale(1.15); border-color: white; }
+        .palette-btn:hover { transform: scale(1.2); border-color: white; z-index: 10; }
         
         .no-color-btn {
-            background: repeating-linear-gradient(45deg, #606060, #606060 5px, #404040 5px, #404040 10px);
+            width: 100%; height: 25px;
+            background: repeating-linear-gradient(45deg, #444, #444 5px, #333 5px, #333 10px);
             display: flex; align-items: center; justify-content: center;
-            font-size: 0.7rem; color: #ccc; border: 1px dashed #888;
+            font-size: 0.7rem; color: #ccc; border: 1px dashed #666;
+            margin-bottom: 10px;
+            border-radius: 3px;
         }
 
-        /* --- Global Controls --- */
-        .btn-group { display: flex; gap: 10px; margin-top: 5px; }
+        .btn-group { display: flex; gap: 8px; margin-top: 5px; }
         .icon-btn {
-            flex: 1; height: 40px; background: var(--accent-color);
+            flex: 1; height: 36px; background: var(--accent-color);
             border: 2px solid transparent; color: var(--text-color); cursor: pointer;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-size: 0.75rem; border-radius: 6px; transition: background 0.2s;
+            font-size: 0.7rem; border-radius: 4px; transition: background 0.2s;
         }
         .icon-btn:hover { background: #5a5a5a; }
-        .icon-btn.active { background: var(--accent-color); border-color: var(--active-color); font-weight: bold; }
+        .icon-btn.active { background: var(--accent-color); border-color: var(--active-color); font-weight: bold; color: white; }
 
-        .export-btn {
-            background: #2563eb; color: white; border: none; padding: 5px 10px;
-            border-radius: 4px; font-size: 0.8rem; cursor: pointer;
-        }
-
-        /* --- Main Canvas --- */
+        /* Main Area */
         #main-area { flex-grow: 1; position: relative; background-color: #ffffff; overflow: hidden; }
         #background-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; }
-        #interaction-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: crosshair; touch-action: none; }
+        #target-object-wrapper {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 90%; height: 90%; z-index: 2; pointer-events: none;
+        }
+        #target-object-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+        #interaction-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 3; cursor: crosshair; touch-action: none; }
         
         #drag-indicator { stroke: #333; stroke-width: 2; stroke-dasharray: 5,5; pointer-events: none; display: none; filter: drop-shadow(0px 0px 2px white); }
         #start-point-indicator { fill: white; stroke: black; stroke-width: 1; display: none; pointer-events: none; }
@@ -198,153 +283,149 @@
 <!-- Color Picker Modal -->
 <div id="color-modal">
     <div class="modal-content">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-            <h2 style="font-size: 1.2rem; font-weight: bold;">Farbe wählen</h2>
-            <button id="close-modal" style="background:none; border:none; color:white; font-size: 1.5rem; cursor:pointer;">&times;</button>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center;">
+            <h2 style="font-size: 1rem; font-weight: bold;">Farbe wählen</h2>
+            <button id="close-modal" style="background:none; border:none; color:#888; font-size: 1.2rem; cursor:pointer;">&times;</button>
         </div>
         
-        <div class="palette-section">
-            <h3>Optionen</h3>
-            <div class="palette-grid" style="grid-template-columns: 1fr;">
-                <button class="palette-btn no-color-btn" style="width: auto; border-radius: 4px; aspect-ratio: auto; height: 35px;" data-color="transparent">Keine Farbe / Transparent</button>
-            </div>
-        </div>
+        <button class="no-color-btn" data-color="transparent">Keine Farbe / Transparent</button>
         <div id="modal-palette-container"></div>
     </div>
 </div>
 
 <div id="app-container">
     <aside id="sidebar">
-        <h1>
-            <span>Gradient Lab</span>
-            <button class="export-btn" id="copy-css-btn">CSS Kopieren</button>
-        </h1>
-
-        <!-- SEKTION HINTERGRUND -->
-        <div>
-            <span class="control-section-title">Hintergrund</span>
-            <div class="color-preview-container">
-                <div class="color-row" id="bg-row-1" onclick="openColorModal('bg', 'color1')">
-                    <div class="color-label-area">
-                        <span class="color-label">Start</span>
-                        <span class="color-sublabel" id="bg-hex-1">#000000</span>
-                    </div>
-                    <div class="color-swatch-large"><div class="swatch-fill" id="bg-swatch-1"></div></div>
-                </div>
-
-                <div class="color-row" id="bg-row-mid">
-                    <div class="color-label-area" onclick="resetMix('bg')">
-                        <span class="color-label">Mix</span>
-                        <span class="color-sublabel" id="bg-hex-mid">Auto</span>
-                    </div>
-                    <div class="color-swatch-large" onclick="openColorModal('bg', 'colorMid')">
-                        <div class="swatch-fill" id="bg-swatch-mid"></div>
-                    </div>
-                </div>
-
-                <div class="color-row" id="bg-row-2" onclick="openColorModal('bg', 'color2')">
-                    <div class="color-label-area">
-                        <span class="color-label">Ende</span>
-                        <span class="color-sublabel" id="bg-hex-2">#000000</span>
-                    </div>
-                    <div class="color-swatch-large"><div class="swatch-fill" id="bg-swatch-2"></div></div>
-                </div>
+        <div class="sidebar-header">
+            <h1>GD Gradient Lab</h1>
+            
+            <div class="tab-nav">
+                <button class="tab-btn active" onclick="switchTab('editor')">Editor</button>
+                <button class="tab-btn" onclick="switchTab('presets')">Presets</button>
             </div>
-            <button class="unicolor-btn" id="bg-unicolor-btn" onclick="toggleUnicolor('bg')">Unicolor (Nur Startfarbe)</button>
         </div>
 
-        <!-- SEKTION OBJEKT (PLUS) -->
-        <div>
-            <span class="control-section-title">Plus (Objekt)</span>
-            <div class="color-preview-container">
-                <div class="color-row" id="obj-row-1" onclick="openColorModal('obj', 'color1')">
-                    <div class="color-label-area">
-                        <span class="color-label">Start</span>
-                        <span class="color-sublabel" id="obj-hex-1">#000000</span>
-                    </div>
-                    <div class="color-swatch-large"><div class="swatch-fill" id="obj-swatch-1"></div></div>
-                </div>
-
-                <div class="color-row" id="obj-row-mid">
-                    <div class="color-label-area" onclick="resetMix('obj')">
-                        <span class="color-label">Mix</span>
-                        <span class="color-sublabel" id="obj-hex-mid">Auto</span>
-                    </div>
-                    <div class="color-swatch-large" onclick="openColorModal('obj', 'colorMid')">
-                        <div class="swatch-fill" id="obj-swatch-mid"></div>
-                    </div>
-                </div>
-
-                <div class="color-row" id="obj-row-2" onclick="openColorModal('obj', 'color2')">
-                    <div class="color-label-area">
-                        <span class="color-label">Ende</span>
-                        <span class="color-sublabel" id="obj-hex-2">#000000</span>
-                    </div>
-                    <div class="color-swatch-large"><div class="swatch-fill" id="obj-swatch-2"></div></div>
-                </div>
-            </div>
-            <button class="unicolor-btn" id="obj-unicolor-btn" onclick="toggleUnicolor('obj')">Unicolor (Nur Startfarbe)</button>
-        </div>
-
-
-        <!-- STEUERUNG (Global für Interaktion) -->
-        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 15px;">
-            <div>
-                <span class="control-section-title">Interaktion / Modus für:</span>
-                <div class="btn-group">
-                    <button class="icon-btn active" data-type="target" data-value="bg">Hintergrund</button>
-                    <button class="icon-btn" data-type="target" data-value="object">Plus (Objekt)</button>
-                </div>
-            </div>
-
-            <div>
-                <span class="control-section-title">Modus:</span>
+        <!-- TAB: EDITOR -->
+        <div id="tab-editor" class="sidebar-content">
+            <!-- STEUERUNG -->
+            <div style="padding-bottom: 15px; border-bottom: 1px solid #333;">
+                <span class="control-section-title">Modus (für aktuelle Auswahl):</span>
                 <div class="btn-group">
                     <button class="icon-btn active" data-type="mode" data-value="circular">Radial</button>
                     <button class="icon-btn" data-type="mode" data-value="straight">Linear</button>
                     <button class="icon-btn" data-type="mode" data-value="cloud">Cloud</button>
                 </div>
             </div>
+
+            <!-- SEKTION HINTERGRUND -->
+            <div id="section-bg" class="color-section-container" onclick="setActiveTarget('bg')">
+                <span class="control-section-title">Hintergrund</span>
+                <div class="color-preview-container">
+                    <div class="color-row" id="bg-row-1" onclick="openColorModal('bg', 'color1')">
+                        <div class="color-label-area">
+                            <span class="color-label">Start</span>
+                            <span class="color-sublabel" id="bg-hex-1">#000000</span>
+                        </div>
+                        <div class="color-swatch-large"><div class="swatch-fill" id="bg-swatch-1"></div></div>
+                    </div>
+
+                    <div class="color-row" id="bg-row-mid">
+                        <div class="color-label-area" onclick="resetMix('bg')">
+                            <span class="color-label">Mix</span>
+                            <span class="color-sublabel" id="bg-hex-mid">Auto</span>
+                        </div>
+                        <div class="color-swatch-large" onclick="openColorModal('bg', 'colorMid')">
+                            <div class="swatch-fill" id="bg-swatch-mid"></div>
+                        </div>
+                    </div>
+
+                    <div class="color-row" id="bg-row-2" onclick="openColorModal('bg', 'color2')">
+                        <div class="color-label-area">
+                            <span class="color-label">Ende</span>
+                            <span class="color-sublabel" id="bg-hex-2">#000000</span>
+                        </div>
+                        <div class="color-swatch-large"><div class="swatch-fill" id="bg-swatch-2"></div></div>
+                    </div>
+                </div>
+                <button class="unicolor-btn" id="bg-unicolor-btn" onclick="toggleUnicolor('bg')">Unicolor (Nur Startfarbe)</button>
+            </div>
+
+            <!-- SEKTION OBJEKT (PLUS) -->
+            <div id="section-obj" class="color-section-container" onclick="setActiveTarget('obj')">
+                <span class="control-section-title">
+                    Plus (Objekt)
+                    <label class="header-checkbox-label" onclick="event.stopPropagation()">
+                        <input type="checkbox" id="obj-gradient-check" checked onchange="toggleGradientCheck()">
+                        Verlauf aktiv
+                    </label>
+                </span>
+                <div class="color-preview-container">
+                    <div class="color-row" id="obj-row-1" onclick="openColorModal('obj', 'color1')">
+                        <div class="color-label-area">
+                            <span class="color-label">Start</span>
+                            <span class="color-sublabel" id="obj-hex-1">#000000</span>
+                        </div>
+                        <div class="color-swatch-large"><div class="swatch-fill" id="obj-swatch-1"></div></div>
+                    </div>
+
+                    <div class="color-row" id="obj-row-mid">
+                        <div class="color-label-area" onclick="resetMix('obj')">
+                            <span class="color-label">Mix</span>
+                            <span class="color-sublabel" id="obj-hex-mid">Auto</span>
+                        </div>
+                        <div class="color-swatch-large" onclick="openColorModal('obj', 'colorMid')">
+                            <div class="swatch-fill" id="obj-swatch-mid"></div>
+                        </div>
+                    </div>
+
+                    <div class="color-row" id="obj-row-2" onclick="openColorModal('obj', 'color2')">
+                        <div class="color-label-area">
+                            <span class="color-label">Ende</span>
+                            <span class="color-sublabel" id="obj-hex-2">#000000</span>
+                        </div>
+                        <div class="color-swatch-large"><div class="swatch-fill" id="obj-swatch-2"></div></div>
+                    </div>
+                </div>
+                
+                <button class="unicolor-btn" id="obj-unicolor-btn" onclick="toggleUnicolor('obj')">Unicolor (Nur Startfarbe)</button>
+            </div>
         </div>
+
+        <!-- TAB: PRESETS -->
+        <div id="tab-presets" class="sidebar-content" style="display: none;">
+            <div id="preset-grid">
+                <!-- Presets werden per JS generiert -->
+            </div>
+        </div>
+
     </aside>
 
     <main id="main-area">
         <div id="background-layer"></div>
 
-        <svg id="interaction-svg" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <!-- Linear Gradient Defs für Objekt -->
-                <linearGradient id="obj-linear-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" id="obj-l-stop1" stop-color="#008cff"/>
-                    <stop offset="50%" id="obj-l-stopMid" stop-color="transparent" stop-opacity="0"/>
-                    <stop offset="100%" id="obj-l-stop2" stop-color="#da4162"/>
-                </linearGradient>
-                
-                <!-- Radial Gradient Defs für Objekt -->
-                 <radialGradient id="obj-radial-grad" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
-                    <stop offset="0%" id="obj-r-stop1" stop-color="#008cff"/>
-                    <stop offset="50%" id="obj-r-stopMid" stop-color="transparent" stop-opacity="0"/>
-                    <stop offset="100%" id="obj-r-stop2" stop-color="#da4162"/>
-                </radialGradient>
-            </defs>
-
-            <!-- OBJEKT: SVG mit der spezifischen Form (Maske) -->
-            <svg id="target-object-container" viewBox="0 0 1680 958" preserveAspectRatio="xMidYMid meet" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; height: 90%; overflow: visible;">
+        <div id="target-object-wrapper">
+            <svg id="target-object-svg" viewBox="0 0 1680 958" preserveAspectRatio="xMidYMid meet">
                 <defs>
-                    <mask id="custom-shape-mask">
-                         <!-- Die vom Nutzer bereitgestellte Geometrie (weiße Rechtecke als Maske) -->
-                        <g fill="#ffffff">
-                            <rect x="131.425" y="377.4779375" width="17.15" height="3.0441249999999997"/><rect x="138.4779375" y="370.425" width="3.0441249999999997" height="17.15"/><rect x="114.27499999999999" y="574.4338125" width="51.45000000000001" height="9.132375000000001"/><rect x="135.4338125" y="553.275" width="9.132375000000001" height="51.45000000000001"/><rect x="231.425" y="277.4779375" width="17.15" height="3.0441249999999997"/><rect x="238.4779375" y="270.425" width="3.0441249999999997" height="17.15"/><rect x="237.55" y="478.565125" width="4.9" height="0.86975"/><rect x="239.565125" y="476.55" width="0.86975" height="4.9"/><rect x="224.075" y="576.1733125" width="31.85" height="5.6533750000000005"/><rect x="237.1733125" y="563.075" width="5.6533750000000005" height="31.85"/><rect x="308.15" y="273.346625" width="63.700000000000024" height="11.306750000000005"/><rect x="334.346625" y="247.14999999999998" width="11.306750000000005" height="63.700000000000024"/><rect x="336.325" y="478.3476875" width="7.350000000000001" height="1.3046250000000001"/><rect x="339.3476875" y="475.325" width="1.3046250000000001" height="7.350000000000001"/><rect x="308.15" y="573.346625" width="63.700000000000024" height="11.306750000000005"/><rect x="334.346625" y="547.15" width="11.306750000000005" height="63.700000000000024"/><rect x="427.75" y="276.825625" width="24.499999999999996" height="4.348749999999999"/><rect x="437.825625" y="266.75" width="4.348749999999999" height="24.499999999999996"/><rect x="408.15" y="373.346625" width="63.70000000000001" height="11.306750000000003"/><rect x="434.346625" y="347.15" width="11.306750000000003" height="63.70000000000001"/><rect x="382.425" y="468.7804375" width="115.14999999999998" height="20.439124999999997"/><rect x="429.7804375" y="421.425" width="20.439124999999997" height="115.14999999999998"/><rect x="530.2" y="277.2605" width="19.599999999999994" height="3.4789999999999988"/><rect x="538.2605" y="269.2" width="3.4789999999999988" height="19.599999999999994"/><rect x="475.07500000000005" y="367.4758125" width="129.84999999999994" height="23.048374999999986"/><rect x="528.4758125" y="314.07500000000005" width="23.048374999999986" height="129.84999999999994"/><rect x="636.325" y="278.3476875" width="7.350000000000001" height="1.3046250000000001"/><rect x="639.3476875" y="275.325" width="1.3046250000000001" height="7.350000000000001"/><rect x="566.5000000000001" y="465.95375" width="146.99999999999986" height="26.092499999999976"/><rect x="626.95375" y="405.50000000000006" width="26.092499999999976" height="146.99999999999986"/><rect x="664.0500000000001" y="265.51887500000004" width="151.89999999999986" height="26.962249999999973"/><rect x="726.518875" y="203.05000000000007" width="26.962249999999973" height="151.89999999999986"/><rect x="688.55" y="369.867625" width="102.90000000000002" height="18.264750000000003"/><rect x="730.867625" y="327.55" width="18.264750000000003" height="102.90000000000002"/><rect x="717.95" y="475.086125" width="44.10000000000001" height="7.827750000000002"/><rect x="736.086125" y="456.95" width="7.827750000000002" height="44.10000000000001"/><rect x="837.55" y="78.565125" width="4.9" height="0.86975"/><rect x="839.565125" y="76.55" width="0.86975" height="4.9"/><rect x="832.65" y="277.695375" width="14.7" height="2.60925"/><rect x="838.695375" y="271.65" width="2.60925" height="14.7"/><rect x="837.55" y="378.565125" width="4.9" height="0.86975"/><rect x="839.565125" y="376.55" width="0.86975" height="4.9"/><rect x="832.65" y="477.695375" width="14.7" height="2.60925"/><rect x="838.695375" y="471.65" width="2.60925" height="14.7"/><rect x="892.225" y="70.5199375" width="95.55000000000005" height="16.96012500000001"/><rect x="931.5199375" y="31.224999999999973" width="16.96012500000001" height="95.55000000000005"/><rect x="928.975" y="277.0430625" width="22.049999999999997" height="3.9138749999999995"/><rect x="938.0430625" y="267.975" width="3.9138749999999995" height="22.049999999999997"/><rect x="927.75" y="476.825625" width="24.499999999999996" height="4.348749999999999"/><rect x="937.825625" y="466.75" width="4.348749999999999" height="24.499999999999996"/><rect x="1030.2" y="377.2605" width="19.599999999999998" height="3.4789999999999996"/><rect x="1038.2605" y="369.2" width="3.4789999999999996" height="19.599999999999998"/><rect x="1020.4" y="475.521" width="39.20000000000001" height="6.958000000000001"/><rect x="1036.521" y="459.4" width="6.958000000000001" height="39.20000000000001"/><rect x="1115.5" y="374.65125" width="49.000000000000014" height="8.697500000000002"/><rect x="1135.65125" y="354.5" width="8.697500000000002" height="49.000000000000014"/><rect x="1088.55" y="469.867625" width="102.90000000000002" height="18.264750000000003"/><rect x="1130.867625" y="427.55" width="18.264750000000003" height="102.90000000000002"/><rect x="1236.325" y="378.3476875" width="7.350000000000001" height="1.3046250000000001"/><rect x="1239.3476875" y="375.325" width="1.3046250000000001" height="7.350000000000001"/><rect x="1228.975" y="477.0430625" width="22.049999999999997" height="3.9138749999999995"/><rect x="1238.0430625" y="467.975" width="3.9138749999999995" height="22.049999999999997"/><rect x="1326.525" y="276.6081875" width="26.949999999999996" height="4.783624999999999"/><rect x="1337.6081875" y="265.525" width="4.783624999999999" height="26.949999999999996"/><rect x="1337.55" y="378.565125" width="4.9" height="0.86975"/><rect x="1339.565125" y="376.55" width="0.86975" height="4.9"/><rect x="1319.175" y="475.3035625" width="41.65000000000001" height="7.392875000000002"/><rect x="1336.3035625" y="458.175" width="7.392875000000002" height="41.65000000000001"/><rect x="1298.35" y="671.607125" width="83.30000000000004" height="14.785750000000007"/><rect x="1332.607125" y="637.35" width="14.785750000000007" height="83.30000000000004"/><rect x="1435.1" y="278.13025" width="9.8" height="1.7395"/><rect x="1439.13025" y="274.1" width="1.7395" height="9.8"/><rect x="1414.275" y="374.4338125" width="51.45000000000001" height="9.132375000000001"/><rect x="1435.4338125" y="353.275" width="9.132375000000001" height="51.45000000000001"/><rect x="1536.325" y="578.3476875" width="7.350000000000001" height="1.3046250000000001"/><rect x="1539.3476875" y="575.325" width="1.3046250000000001" height="7.350000000000001"/>
-                        </g>
-                    </mask>
+                    <linearGradient id="obj-linear-grad" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="100%" y2="0">
+                        <stop offset="0%" id="obj-l-stop1" stop-color="#008cff"/>
+                        <stop offset="50%" id="obj-l-stopMid" stop-color="transparent" stop-opacity="0"/>
+                        <stop offset="100%" id="obj-l-stop2" stop-color="#da4162"/>
+                    </linearGradient>
+                    
+                    <radialGradient id="obj-radial-grad" gradientUnits="userSpaceOnUse" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                        <stop offset="0%" id="obj-r-stop1" stop-color="#008cff"/>
+                        <stop offset="50%" id="obj-r-stopMid" stop-color="transparent" stop-opacity="0"/>
+                        <stop offset="100%" id="obj-r-stop2" stop-color="#da4162"/>
+                    </radialGradient>
                 </defs>
                 
-                <!-- Das eigentliche Rechteck, das den Gradienten trägt.
-                     Durch die Maske ist der Gradient nur in den Plus-Symbolen sichtbar.
-                     Der Hintergrund (durchsichtig) zeigt den #background-layer -->
-                <rect id="target-object" width="100%" height="100%" x="0" y="0" fill="url(#obj-radial-grad)" mask="url(#custom-shape-mask)" />
+                <g id="plus-group" fill="url(#obj-radial-grad)">
+                    <!-- Rects werden per JS eingefügt -->
+                    <rect x="131.425" y="377.4779375" width="17.15" height="3.0441249999999997"/><rect x="138.4779375" y="370.425" width="3.0441249999999997" height="17.15"/><rect x="114.27499999999999" y="574.4338125" width="51.45000000000001" height="9.132375000000001"/><rect x="135.4338125" y="553.275" width="9.132375000000001" height="51.45000000000001"/><rect x="231.425" y="277.4779375" width="17.15" height="3.0441249999999997"/><rect x="238.4779375" y="270.425" width="3.0441249999999997" height="17.15"/><rect x="237.55" y="478.565125" width="4.9" height="0.86975"/><rect x="239.565125" y="476.55" width="0.86975" height="4.9"/><rect x="224.075" y="576.1733125" width="31.85" height="5.6533750000000005"/><rect x="237.1733125" y="563.075" width="5.6533750000000005" height="31.85"/><rect x="308.15" y="273.346625" width="63.700000000000024" height="11.306750000000005"/><rect x="334.346625" y="247.14999999999998" width="11.306750000000005" height="63.700000000000024"/><rect x="336.325" y="478.3476875" width="7.350000000000001" height="1.3046250000000001"/><rect x="339.3476875" y="475.325" width="1.3046250000000001" height="7.350000000000001"/><rect x="308.15" y="573.346625" width="63.700000000000024" height="11.306750000000005"/><rect x="334.346625" y="547.15" width="11.306750000000005" height="63.700000000000024"/><rect x="427.75" y="276.825625" width="24.499999999999996" height="4.348749999999999"/><rect x="437.825625" y="266.75" width="4.348749999999999" height="24.499999999999996"/><rect x="408.15" y="373.346625" width="63.70000000000001" height="11.306750000000003"/><rect x="434.346625" y="347.15" width="11.306750000000003" height="63.70000000000001"/><rect x="382.425" y="468.7804375" width="115.14999999999998" height="20.439124999999997"/><rect x="429.7804375" y="421.425" width="20.439124999999997" height="115.14999999999998"/><rect x="530.2" y="277.2605" width="19.599999999999994" height="3.4789999999999988"/><rect x="538.2605" y="269.2" width="3.4789999999999988" height="19.599999999999994"/><rect x="475.07500000000005" y="367.4758125" width="129.84999999999994" height="23.048374999999986"/><rect x="528.4758125" y="314.07500000000005" width="23.048374999999986" height="129.84999999999994"/><rect x="636.325" y="278.3476875" width="7.350000000000001" height="1.3046250000000001"/><rect x="639.3476875" y="275.325" width="1.3046250000000001" height="7.350000000000001"/><rect x="566.5000000000001" y="465.95375" width="146.99999999999986" height="26.092499999999976"/><rect x="626.95375" y="405.50000000000006" width="26.092499999999976" height="146.99999999999986"/><rect x="664.0500000000001" y="265.51887500000004" width="151.89999999999986" height="26.962249999999973"/><rect x="726.518875" y="203.05000000000007" width="26.962249999999973" height="151.89999999999986"/><rect x="688.55" y="369.867625" width="102.90000000000002" height="18.264750000000003"/><rect x="730.867625" y="327.55" width="18.264750000000003" height="102.90000000000002"/><rect x="717.95" y="475.086125" width="44.10000000000001" height="7.827750000000002"/><rect x="736.086125" y="456.95" width="7.827750000000002" height="44.10000000000001"/><rect x="837.55" y="78.565125" width="4.9" height="0.86975"/><rect x="839.565125" y="76.55" width="0.86975" height="4.9"/><rect x="832.65" y="277.695375" width="14.7" height="2.60925"/><rect x="838.695375" y="271.65" width="2.60925" height="14.7"/><rect x="837.55" y="378.565125" width="4.9" height="0.86975"/><rect x="839.565125" y="376.55" width="0.86975" height="4.9"/><rect x="832.65" y="477.695375" width="14.7" height="2.60925"/><rect x="838.695375" y="471.65" width="2.60925" height="14.7"/><rect x="892.225" y="70.5199375" width="95.55000000000005" height="16.96012500000001"/><rect x="931.5199375" y="31.224999999999973" width="16.96012500000001" height="95.55000000000005"/><rect x="928.975" y="277.0430625" width="22.049999999999997" height="3.9138749999999995"/><rect x="938.0430625" y="267.975" width="3.9138749999999995" height="22.049999999999997"/><rect x="927.75" y="476.825625" width="24.499999999999996" height="4.348749999999999"/><rect x="937.825625" y="466.75" width="4.348749999999999" height="24.499999999999996"/><rect x="1030.2" y="377.2605" width="19.599999999999998" height="3.4789999999999996"/><rect x="1038.2605" y="369.2" width="3.4789999999999996" height="19.599999999999998"/><rect x="1020.4" y="475.521" width="39.20000000000001" height="6.958000000000001"/><rect x="1036.521" y="459.4" width="6.958000000000001" height="39.20000000000001"/><rect x="1115.5" y="374.65125" width="49.000000000000014" height="8.697500000000002"/><rect x="1135.65125" y="354.5" width="8.697500000000002" height="49.000000000000014"/><rect x="1088.55" y="469.867625" width="102.90000000000002" height="18.264750000000003"/><rect x="1130.867625" y="427.55" width="18.264750000000003" height="102.90000000000002"/><rect x="1236.325" y="378.3476875" width="7.350000000000001" height="1.3046250000000001"/><rect x="1239.3476875" y="375.325" width="1.3046250000000001" height="7.350000000000001"/><rect x="1228.975" y="477.0430625" width="22.049999999999997" height="3.9138749999999995"/><rect x="1238.0430625" y="467.975" width="3.9138749999999995" height="22.049999999999997"/><rect x="1326.525" y="276.6081875" width="26.949999999999996" height="4.783624999999999"/><rect x="1337.6081875" y="265.525" width="4.783624999999999" height="26.949999999999996"/><rect x="1337.55" y="378.565125" width="4.9" height="0.86975"/><rect x="1339.565125" y="376.55" width="0.86975" height="4.9"/><rect x="1319.175" y="475.3035625" width="41.65000000000001" height="7.392875000000002"/><rect x="1336.3035625" y="458.175" width="7.392875000000002" height="41.65000000000001"/><rect x="1298.35" y="671.607125" width="83.30000000000004" height="14.785750000000007"/><rect x="1332.607125" y="637.35" width="14.785750000000007" height="83.30000000000004"/><rect x="1435.1" y="278.13025" width="9.8" height="1.7395"/><rect x="1439.13025" y="274.1" width="1.7395" height="9.8"/><rect x="1414.275" y="374.4338125" width="51.45000000000001" height="9.132375000000001"/><rect x="1435.4338125" y="353.275" width="9.132375000000001" height="51.45000000000001"/><rect x="1536.325" y="578.3476875" width="7.350000000000001" height="1.3046250000000001"/><rect x="1539.3476875" y="575.325" width="1.3046250000000001" height="7.350000000000001"/>
+                </g>
             </svg>
-            
+        </div>
+
+        <svg id="interaction-svg" xmlns="http://www.w3.org/2000/svg">
             <line id="drag-indicator" x1="0" y1="0" x2="0" y2="0" />
             <circle id="start-point-indicator" r="4" cx="0" cy="0" />
         </svg>
@@ -362,61 +443,66 @@
         'Green': ['#007647', '#00c167', '#c4ebc3'],
         'Grey/White': ['#000000', '#4c4c4c', '#a6a6a6', '#c7c7c7', '#e5e5e5', '#f7f8f9', '#ffffff']
     };
+    
+    // Flat list for random generation
+    const allColors = Object.values(colorPalette).flat();
 
     // --- STATUS ---
     let settings = {
-        bg: {
-            color1: '#040066',
-            color2: '#00d4ff',
-            colorMid: 'transparent',
-            mode: 'cloud',
-            gradientCSS: '',
-            isUnicolor: false // Neues Flag
-        },
-        obj: {
-            color1: '#da4162',
-            color2: '#ffa6b4',
-            colorMid: 'transparent',
-            mode: 'circular',
-            isUnicolor: false // Neues Flag
-        }
+        bg: { color1: '#040066', color2: '#00d4ff', colorMid: 'transparent', mode: 'straight', gradientCSS: '', isUnicolor: false },
+        obj: { color1: '#ffffff', color2: '#ffa6b4', colorMid: 'transparent', mode: 'straight', isUnicolor: true, useGradient: true }
     };
 
-    // Globale aktive Werte für Interaktion
     let activeTarget = 'bg'; 
-    
-    // Interne State Variablen
     let isDragging = false;
     let dragStart = { x: 0, y:0 };
     let editingContext = { target: null, prop: null };
+    let lastInteractionCoords = {
+        bg: { x1: window.innerWidth/2, y1: window.innerHeight/2, x2: window.innerWidth/2, y2: window.innerHeight/2 + 200 },
+        obj: { x1: window.innerWidth/2, y1: window.innerHeight/2, x2: window.innerWidth/2, y2: window.innerHeight/2 + 200 }
+    };
 
     // --- DOM ELEMENTE ---
     const bgLayer = document.getElementById('background-layer');
     const svgLayer = document.getElementById('interaction-svg');
-    const targetObject = document.getElementById('target-object'); // Updated reference
+    const targetObjectWrapper = document.getElementById('target-object-wrapper');
+    const plusGroup = document.getElementById('plus-group');
     const dragIndicator = document.getElementById('drag-indicator');
     const startPointIndicator = document.getElementById('start-point-indicator');
-    const copyBtn = document.getElementById('copy-css-btn');
     const colorModal = document.getElementById('color-modal');
     const modalPaletteContainer = document.getElementById('modal-palette-container');
     const closeModalBtn = document.getElementById('close-modal');
-
+    const presetGrid = document.getElementById('preset-grid');
 
     // --- INITIALISIERUNG ---
     function init() {
+        convertRectsToPaths(); 
         buildModalPalette();
+        generatePresets();
         setupEventListeners();
-        
-        // Initial Rendering
         updateUI(); 
-        applyGradient('bg'); 
-        applyGradient('obj'); 
-        
-        // SVG Defaults
-        const gradEl = document.getElementById('obj-radial-grad');
-        gradEl.setAttribute('cx', '50%');
-        gradEl.setAttribute('cy', '50%');
-        gradEl.setAttribute('r', '50%');
+        applyGradientFromLastCoords('bg');
+        applyGradientFromLastCoords('obj');
+    }
+    
+    function convertRectsToPaths() {
+        const rects = Array.from(plusGroup.querySelectorAll('rect'));
+        for (let i = 0; i < rects.length; i += 2) {
+            if (i + 1 >= rects.length) break;
+            const r1 = rects[i]; const r2 = rects[i+1];
+            const x1 = parseFloat(r1.getAttribute('x')), y1 = parseFloat(r1.getAttribute('y'));
+            const w1 = parseFloat(r1.getAttribute('width')), h1 = parseFloat(r1.getAttribute('height'));
+            const x2 = parseFloat(r2.getAttribute('x')), y2 = parseFloat(r2.getAttribute('y'));
+            const w2 = parseFloat(r2.getAttribute('width')), h2 = parseFloat(r2.getAttribute('height'));
+            
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            const d = `M ${x1} ${y1} h ${w1} v ${h1} h ${-w1} Z M ${x2} ${y2} h ${w2} v ${h2} h ${-w2} Z`;
+            path.setAttribute('d', d);
+            path.setAttribute('data-cx', x1 + w1/2);
+            path.setAttribute('data-cy', y1 + h1/2);
+            plusGroup.appendChild(path);
+        }
+        rects.forEach(r => r.remove());
     }
 
     function buildModalPalette() {
@@ -442,6 +528,87 @@
         }
     }
 
+    // --- PRESETS ---
+    function generatePresets() {
+        presetGrid.innerHTML = '';
+        const modes = ['straight', 'circular', 'cloud'];
+        
+        for (let i = 0; i < 20; i++) {
+            // Random Config
+            const pBg = {
+                color1: allColors[Math.floor(Math.random() * allColors.length)],
+                color2: allColors[Math.floor(Math.random() * allColors.length)],
+                colorMid: Math.random() > 0.5 ? 'transparent' : allColors[Math.floor(Math.random() * allColors.length)],
+                mode: modes[Math.floor(Math.random() * modes.length)],
+                isUnicolor: false
+            };
+            const pObj = {
+                color1: allColors[Math.floor(Math.random() * allColors.length)],
+                color2: allColors[Math.floor(Math.random() * allColors.length)],
+                colorMid: 'transparent',
+                mode: modes[Math.floor(Math.random() * modes.length)],
+                isUnicolor: Math.random() > 0.7, // 30% chance for unicolor
+                useGradient: Math.random() > 0.3
+            };
+            
+            // Build DOM
+            const card = document.createElement('div');
+            card.className = 'preset-card';
+            
+            // Preview Logic (Simplified CSS)
+            let bgCss = '';
+            if(pBg.mode === 'cloud') {
+                // Simplified cloud preview
+                bgCss = `radial-gradient(circle at 30% 30%, ${pBg.color1}, transparent), radial-gradient(circle at 70% 70%, ${pBg.color2}, transparent), ${pBg.colorMid !== 'transparent' ? pBg.colorMid : '#888'}`;
+            } else {
+                const gradType = pBg.mode === 'circular' ? 'radial-gradient' : 'linear-gradient';
+                const angle = pBg.mode === 'straight' ? '135deg,' : 'circle,';
+                bgCss = `${gradType}(${angle} ${pBg.color1}, ${pBg.colorMid !== 'transparent' ? pBg.colorMid+',' : ''} ${pBg.color2})`;
+            }
+            
+            const preview = document.createElement('div');
+            preview.className = 'preset-preview';
+            preview.style.background = bgCss;
+            
+            const objInd = document.createElement('div');
+            objInd.className = 'preset-obj-preview';
+            objInd.style.background = pObj.isUnicolor ? pObj.color1 : `linear-gradient(45deg, ${pObj.color1}, ${pObj.color2})`;
+            
+            preview.appendChild(objInd);
+            
+            const info = document.createElement('div');
+            info.className = 'preset-info';
+            info.textContent = `Preset ${i+1}`;
+            
+            card.appendChild(preview);
+            card.appendChild(info);
+            
+            card.onclick = () => loadPreset(pBg, pObj);
+            presetGrid.appendChild(card);
+        }
+    }
+    
+    function loadPreset(bg, obj) {
+        settings.bg = { ...settings.bg, ...bg };
+        settings.obj = { ...settings.obj, ...obj };
+        updateUI();
+        applyGradientFromLastCoords('bg');
+        applyGradientFromLastCoords('obj');
+    }
+
+    // --- TABS ---
+    window.switchTab = function(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
+        
+        if (tabName === 'editor') {
+            document.getElementById('tab-editor').style.display = 'flex';
+            document.getElementById('tab-presets').style.display = 'none';
+        } else {
+            document.getElementById('tab-editor').style.display = 'none';
+            document.getElementById('tab-presets').style.display = 'block';
+        }
+    }
 
     // --- EVENT LISTENER ---
     function setupEventListeners() {
@@ -456,30 +623,17 @@
         
         document.querySelector('.no-color-btn').addEventListener('click', () => selectColor('transparent'));
 
-        // Control Buttons
         document.querySelectorAll('.icon-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const type = btn.dataset.type;
                 const value = btn.dataset.value;
 
-                if (type === 'target') {
-                    activeTarget = value === 'object' ? 'obj' : 'bg'; 
-                    updateControlButtons();
-                } else if (type === 'mode') {
+                if (type === 'mode') {
                     settings[activeTarget].mode = value;
                     updateControlButtons();
-                    applyGradient(activeTarget); 
+                    applyGradientFromLastCoords(activeTarget); 
                 }
             });
-        });
-        
-        copyBtn.addEventListener('click', () => {
-            const css = settings.bg.gradientCSS;
-            if(!css) return;
-            navigator.clipboard.writeText(`background: ${css};`);
-            const oldText = copyBtn.innerText;
-            copyBtn.innerText = "Kopiert!";
-            setTimeout(() => copyBtn.innerText = oldText, 1000);
         });
 
         // Pointer Events
@@ -491,34 +645,48 @@
         window.addEventListener('touchend', handlePointerUp);
     }
 
-    // --- MODAL & COLOR LOGIC ---
+    // --- HELPER: Active Target Switcher ---
+    window.setActiveTarget = function(target) {
+        if (activeTarget !== target) {
+            activeTarget = target;
+            updateControlButtons();
+            updateUI(); 
+        }
+    }
+
+    // --- LOGIK ---
+    window.toggleGradientCheck = function() {
+        setActiveTarget('obj'); 
+        const check = document.getElementById('obj-gradient-check');
+        settings.obj.useGradient = check.checked;
+        applyGradientFromLastCoords('obj');
+    }
+
     window.openColorModal = function(target, prop) {
-        // Falls Unicolor aktiv ist und wir auf ein inaktives Feld klicken, reaktivieren wir es
+        setActiveTarget(target); 
+        
         if (settings[target].isUnicolor && (prop === 'color2' || prop === 'colorMid')) {
             settings[target].isUnicolor = false;
             updateUI();
-            applyGradient(target);
+            applyGradientFromLastCoords(target);
         }
-
         editingContext = { target, prop };
         colorModal.style.display = 'flex';
     }
 
     window.resetMix = function(target) {
-        // Falls Unicolor aktiv, deaktivieren
-        if (settings[target].isUnicolor) {
-            settings[target].isUnicolor = false;
-        }
+        setActiveTarget(target); 
+        if (settings[target].isUnicolor) settings[target].isUnicolor = false;
         settings[target].colorMid = 'transparent';
         updateUI();
-        applyGradient(target);
+        applyGradientFromLastCoords(target);
     }
 
-    // Ersetzt makeUnicolor: Toggle Funktion
     window.toggleUnicolor = function(target) {
+        setActiveTarget(target); 
         settings[target].isUnicolor = !settings[target].isUnicolor;
         updateUI();
-        applyGradient(target);
+        applyGradientFromLastCoords(target);
     }
 
     function closeColorModal() {
@@ -528,31 +696,30 @@
 
     function selectColor(color) {
         if (!editingContext.target) return;
-        
-        const { target, prop } = editingContext;
-        if (prop !== 'colorMid' && color === 'transparent') color = '#ffffff';
-        
-        settings[target][prop] = color;
-        
+        settings[editingContext.target][editingContext.prop] = color;
         updateUI();
-        applyGradient(target);
+        applyGradientFromLastCoords(editingContext.target);
         closeColorModal();
     }
 
-    // --- UI UPDATES ---
     function updateUI() {
         ['bg', 'obj'].forEach(t => {
             const s = settings[t];
             const isUni = s.isUnicolor;
             
-            // Hex Labels & Swatches
+            const section = t === 'bg' ? document.getElementById('section-bg') : document.getElementById('section-obj');
+            if (activeTarget === t) {
+                section.classList.add('active-edit-section');
+            } else {
+                section.classList.remove('active-edit-section');
+            }
+            
             document.getElementById(`${t}-hex-1`).textContent = s.color1;
             document.getElementById(`${t}-swatch-1`).style.backgroundColor = s.color1;
             
             document.getElementById(`${t}-hex-2`).textContent = s.color2;
             document.getElementById(`${t}-swatch-2`).style.backgroundColor = s.color2;
             
-            // Unicolor Button State
             const uniBtn = document.getElementById(`${t}-unicolor-btn`);
             if (isUni) {
                 uniBtn.classList.add('active');
@@ -562,7 +729,6 @@
                 uniBtn.textContent = "Unicolor (Nur Startfarbe anwenden)";
             }
 
-            // Disable/Enable Rows visual style
             const rowMid = document.getElementById(`${t}-row-mid`);
             const row2 = document.getElementById(`${t}-row-2`);
             
@@ -574,21 +740,11 @@
                 row2.classList.remove('disabled-state');
             }
             
-            // Mix Logic
             const mixEl = document.getElementById(`${t}-swatch-mid`);
             const mixLabel = document.getElementById(`${t}-hex-mid`);
             
             if (s.colorMid === 'transparent') {
-                const c1 = hexToRgb(s.color1);
-                // Wenn Unicolor, mixen wir quasi mit uns selbst für die Vorschau, 
-                // aber visuell ist die Zeile eh ausgegraut. Nehmen wir dennoch s.color2 falls reaktiviert wird.
-                const c2 = hexToRgb(s.color2);
-                if(c1 && c2) {
-                    const r = Math.round((c1.r + c2.r)/2);
-                    const g = Math.round((c1.g + c2.g)/2);
-                    const b = Math.round((c1.b + c2.b)/2);
-                    mixEl.style.backgroundColor = `rgb(${r},${g},${b})`;
-                }
+                mixEl.style.backgroundColor = `color-mix(in oklch, ${s.color1}, ${s.color2})`;
                 mixLabel.textContent = "Auto";
                 mixEl.parentElement.style.opacity = "0.7";
             } else {
@@ -598,50 +754,16 @@
             }
         });
         
+        document.getElementById('obj-gradient-check').checked = settings.obj.useGradient;
         updateControlButtons();
-        updateSVGStops(); 
     }
 
     function updateControlButtons() {
-        document.querySelectorAll('.icon-btn[data-type="target"]').forEach(btn => {
-            const val = btn.dataset.value === 'object' ? 'obj' : 'bg';
-            btn.classList.toggle('active', val === activeTarget);
-        });
-        
         const currentMode = settings[activeTarget].mode;
         document.querySelectorAll('.icon-btn[data-type="mode"]').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.value === currentMode);
         });
     }
-    
-    function updateSVGStops() {
-        const s = settings.obj;
-        // Wenn Unicolor, überschreiben wir für die Stops temporär alles mit color1
-        const c1 = s.color1;
-        const c2 = s.isUnicolor ? s.color1 : s.color2;
-        const mid = s.isUnicolor ? 'transparent' : s.colorMid;
-
-        const stops = [
-            { id: 'obj-l', c1: c1, c2: c2, mid: mid },
-            { id: 'obj-r', c1: c1, c2: c2, mid: mid }
-        ];
-
-        stops.forEach(item => {
-            document.getElementById(`${item.id}-stop1`).setAttribute('stop-color', item.c1);
-            document.getElementById(`${item.id}-stop2`).setAttribute('stop-color', item.c2);
-            
-            const midStop = document.getElementById(`${item.id}-stopMid`);
-            if (item.mid !== 'transparent') {
-                midStop.setAttribute('stop-color', item.mid);
-                midStop.setAttribute('stop-opacity', '1');
-                midStop.setAttribute('offset', '50%');
-            } else {
-                midStop.setAttribute('stop-opacity', '0');
-            }
-        });
-    }
-
-    // --- INTERACTION & GRADIENT LOGIC ---
 
     function getPointerPos(e) {
         if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -654,7 +776,7 @@
         const mode = settings[activeTarget].mode;
         
         if (mode === 'cloud') {
-            applyGradient(activeTarget); 
+            applyGradient(activeTarget, 0,0,0,0);
             return;
         }
 
@@ -676,7 +798,7 @@
             startPointIndicator.setAttribute('cx', localX);
             startPointIndicator.setAttribute('cy', localY);
         } else if (mode === 'circular') {
-            applyGradientWithCoords(activeTarget, pos.x, pos.y, pos.x, pos.y + 100);
+            applyGradient(activeTarget, pos.x, pos.y, pos.x, pos.y + 100);
         }
     }
 
@@ -693,7 +815,7 @@
             dragIndicator.setAttribute('x2', pos.x - rect.left);
             dragIndicator.setAttribute('y2', pos.y - rect.top);
         } else if (mode === 'circular') {
-            applyGradientWithCoords(activeTarget, dragStart.x, dragStart.y, pos.x, pos.y);
+            applyGradient(activeTarget, dragStart.x, dragStart.y, pos.x, pos.y);
         }
     }
 
@@ -707,7 +829,7 @@
             const x2 = parseFloat(dragIndicator.getAttribute('x2'));
             const y2 = parseFloat(dragIndicator.getAttribute('y2'));
             const rect = svgLayer.getBoundingClientRect();
-            applyGradientWithCoords(activeTarget, x1 + rect.left, y1 + rect.top, x2 + rect.left, y2 + rect.top);
+            applyGradient(activeTarget, x1 + rect.left, y1 + rect.top, x2 + rect.left, y2 + rect.top);
         }
 
         isDragging = false;
@@ -715,17 +837,20 @@
         startPointIndicator.style.display = 'none';
     }
 
-    function applyGradient(target) {
+    function applyGradientFromLastCoords(target) {
         if (settings[target].mode === 'cloud') {
-            applyGradientWithCoords(target, 0, 0, 0, 0); 
+            applyGradient(target, 0, 0, 0, 0);
         } else {
-             const cx = window.innerWidth/2;
-             const cy = window.innerHeight/2;
-             applyGradientWithCoords(target, cx, cy, cx, cy + 200);
+            const coords = lastInteractionCoords[target];
+            applyGradient(target, coords.x1, coords.y1, coords.x2, coords.y2);
         }
     }
 
-    function applyGradientWithCoords(target, x1, y1, x2, y2) {
+    function applyGradient(target, x1, y1, x2, y2) {
+        if (settings[target].mode !== 'cloud') {
+            lastInteractionCoords[target] = { x1, y1, x2, y2 };
+        }
+
         const rect = svgLayer.getBoundingClientRect();
         const rx1 = x1 - rect.left;
         const ry1 = y1 - rect.top;
@@ -736,30 +861,86 @@
         let cssStyle = '';
         let svgFill = '';
 
-        // Colors Generator
+        const updateStops = (prefix) => {
+            let midColor = s.colorMid;
+            
+            if (s.colorMid === 'transparent') {
+                midColor = `color-mix(in oklch, ${s.color1}, ${s.color2})`;
+            }
+
+            const stops = [
+                { id: prefix+'-stop1', c: s.color1, offset: '0%' },
+                { id: prefix+'-stopMid', c: midColor, offset: '50%' },
+                { id: prefix+'-stop2', c: s.color2, offset: '100%' }
+            ];
+            
+            if (s.isUnicolor) {
+                stops[1].c = s.color1; 
+                stops[2].c = s.color1;      
+            }
+
+            stops.forEach(stop => {
+                const el = document.getElementById(stop.id);
+                if (!el) return;
+                
+                let color = stop.c;
+                let opacity = 1;
+                
+                if (color === 'transparent') {
+                    color = '#000000';
+                    opacity = 0;
+                } 
+                
+                el.setAttribute('stop-color', color);
+                el.setAttribute('stop-opacity', opacity);
+            });
+        };
+
         const getColorsCSS = () => { 
-             // Wenn Unicolor aktiv, gib nur die Startfarbe zurück (Solid)
-             if (s.isUnicolor) {
-                 return `${s.color1}, ${s.color1}`;
-             }
-             if (s.colorMid !== 'transparent') {
-                 return `${s.color1}, ${s.colorMid}, ${s.color2}`;
-             }
+             if (s.isUnicolor) return `${s.color1}, ${s.color1}`;
+             if (s.colorMid !== 'transparent') return `${s.color1}, ${s.colorMid}, ${s.color2}`;
              return `${s.color1}, ${s.color2}`;
         };
 
+        const objRect = targetObjectWrapper.getBoundingClientRect();
+        const scaleX = 1680 / objRect.width;
+        const scaleY = 958 / objRect.height;
+        const mapX = (sx) => (sx - objRect.left) * scaleX;
+        const mapY = (sy) => (sy - objRect.top) * scaleY;
+        
+        const svgX1 = mapX(x1);
+        const svgY1 = mapY(y1);
+        const svgX2 = mapX(x2);
+        const svgY2 = mapY(y2);
+
+        if (target === 'obj') {
+             if (s.isUnicolor) {
+                 plusGroup.setAttribute('fill', s.color1 === 'transparent' ? 'none' : s.color1);
+                 Array.from(plusGroup.children).forEach(el => el.removeAttribute('fill'));
+                 return; 
+             }
+             if (!s.useGradient) {
+                 applyDiscreteColors(s, svgX1, svgY1, svgX2, svgY2);
+                 return;
+             }
+             updateStops('obj-l');
+             updateStops('obj-r');
+             plusGroup.removeAttribute('fill'); 
+             Array.from(plusGroup.children).forEach(el => el.removeAttribute('fill'));
+        }
+
         switch (s.mode) {
             case 'circular': {
-                const dist = Math.hypot(rx2 - rx1, ry2 - ry1);
-                const r = dist > 5 ? dist : rect.width/2;
-                
                 if (target === 'bg') {
-                    cssStyle = `radial-gradient(circle at ${rx1}px ${ry1}px, ${getColorsCSS()})`;
+                    cssStyle = `radial-gradient(in oklch circle at ${rx1}px ${ry1}px, ${getColorsCSS()})`;
                 } else {
+                    const svgDist = Math.hypot(svgX2 - svgX1, svgY2 - svgY1);
                     const gradEl = document.getElementById('obj-radial-grad');
-                    gradEl.setAttribute('cx', `${(rx1/rect.width)*100}%`);
-                    gradEl.setAttribute('cy', `${(ry1/rect.height)*100}%`);
-                    gradEl.setAttribute('r', `${(r/rect.width)*100}%`); 
+                    gradEl.setAttribute('cx', svgX1);
+                    gradEl.setAttribute('cy', svgY1);
+                    gradEl.setAttribute('r', svgDist > 5 ? svgDist : 1680/2); 
+                    gradEl.setAttribute('fx', svgX1);
+                    gradEl.setAttribute('fy', svgY1);
                     svgFill = 'url(#obj-radial-grad)';
                 }
                 break;
@@ -768,33 +949,68 @@
                 const angle = Math.atan2(ry2 - ry1, rx2 - rx1) * 180 / Math.PI + 90;
                 
                 if (target === 'bg') {
-                    cssStyle = `linear-gradient(${angle}deg, ${getColorsCSS()})`;
+                    cssStyle = `linear-gradient(in oklch ${angle}deg, ${getColorsCSS()})`;
                 } else {
                     const gradEl = document.getElementById('obj-linear-grad');
-                    gradEl.setAttribute('gradientTransform', `rotate(${angle-90} 0.5 0.5)`);
+                    gradEl.setAttribute('x1', '0%');
+                    gradEl.setAttribute('y1', '100%'); 
+                    gradEl.setAttribute('x2', '0%');
+                    gradEl.setAttribute('y2', '0%');
+                    const cx = 1680 / 2;
+                    const cy = 958 / 2;
+                    gradEl.setAttribute('gradientTransform', `rotate(${angle - 180} ${cx} ${cy})`);
                     svgFill = 'url(#obj-linear-grad)';
                 }
                 break;
             }
             case 'cloud': {
-                // Cloud Unicolor Fallback: Solid Background
                 if (s.isUnicolor) {
                     cssStyle = s.color1;
-                    svgFill = s.color1; // SVG can take hex directly
+                    svgFill = s.color1; 
                 } else {
-                    const blobs = [];
-                    const numBlobs = 3 + Math.floor(Math.random() * 3);
-                    for(let i=0; i<numBlobs; i++) {
-                        const bx = Math.floor(Math.random() * 100);
-                        const by = Math.floor(Math.random() * 100);
-                        const color = Math.random() > 0.5 ? s.color1 : s.color2;
-                        const midC = s.colorMid !== 'transparent' ? s.colorMid : 'transparent';
-                        const usedColor = (Math.random() > 0.8 && midC !== 'transparent') ? midC : color;
-                        blobs.push(`radial-gradient(circle at ${bx}% ${by}%, ${usedColor}, transparent 60%)`);
+                    // CLOUD FIX: Use MIX color if available
+                    // Background Cloud
+                    if (target === 'bg') {
+                        const blobs = [];
+                        const numBlobs = 3 + Math.floor(Math.random() * 3);
+                        // Pool of available colors: c1, c2, and optionally mid
+                        const pool = [s.color1, s.color2];
+                        if (s.colorMid !== 'transparent') pool.push(s.colorMid);
+                        
+                        for(let i=0; i<numBlobs; i++) {
+                            const bx = Math.floor(Math.random() * 100);
+                            const by = Math.floor(Math.random() * 100);
+                            const color = pool[Math.floor(Math.random() * pool.length)];
+                            blobs.push(`radial-gradient(in oklch circle at ${bx}% ${by}%, ${color}, transparent 60%)`);
+                        }
+                        
+                        // Base gradient also needs mix logic
+                        let baseGrad = '';
+                        if (s.colorMid !== 'transparent') {
+                             baseGrad = `linear-gradient(in oklch 135deg, ${s.color1}, ${s.colorMid}, ${s.color2})`;
+                        } else {
+                             baseGrad = `linear-gradient(in oklch 135deg, ${s.color1}, ${s.color2})`;
+                        }
+                        
+                        cssStyle = blobs.join(', ') + ', ' + baseGrad;
+                    } else {
+                        // Obj Cloud - Random movement
+                        const gradEl = document.getElementById('obj-radial-grad');
+                        const cx = Math.random() * 1680;
+                        const cy = Math.random() * 958;
+                        const r = 400 + Math.random() * 600;
+                        gradEl.setAttribute('cx', cx);
+                        gradEl.setAttribute('cy', cy);
+                        gradEl.setAttribute('r', r);
+                        gradEl.setAttribute('fx', cx);
+                        gradEl.setAttribute('fy', cy);
+                        
+                        // Update stops to use random pool logic too?
+                        // SVG Gradients are continuous. We can just set the stops.
+                        // For a cloud feel on SVG object, we rely on the radial gradient we just moved.
+                        updateStops('obj-r');
+                        svgFill = 'url(#obj-radial-grad)';
                     }
-                    const base = `linear-gradient(135deg, ${s.color1}, ${s.color2})`;
-                    cssStyle = blobs.join(', ') + ', ' + base;
-                    svgFill = 'url(#obj-radial-grad)'; 
                 }
                 break;
             }
@@ -804,17 +1020,65 @@
             bgLayer.style.background = cssStyle;
             settings.bg.gradientCSS = cssStyle;
         } else {
-            targetObject.setAttribute('fill', svgFill); // Updated reference
+            plusGroup.setAttribute('fill', svgFill);
         }
     }
+    
+    function applyDiscreteColors(s, x1, y1, x2, y2) {
+        plusGroup.removeAttribute('fill');
+        const paths = Array.from(plusGroup.children);
+        
+        const getColor = (t) => {
+            t = Math.max(0, Math.min(1, t));
+            const percentage = t * 100;
+            
+            if (s.colorMid === 'transparent') {
+                return `color-mix(in oklch, ${s.color1} ${100 - percentage}%, ${s.color2})`;
+            } else {
+                if (t < 0.5) {
+                    const t2 = t * 2 * 100;
+                    return `color-mix(in oklch, ${s.color1} ${100 - t2}%, ${s.colorMid})`;
+                } else {
+                    const t2 = (t - 0.5) * 2 * 100;
+                    return `color-mix(in oklch, ${s.colorMid} ${100 - t2}%, ${s.color2})`;
+                }
+            }
+        };
 
+        paths.forEach(path => {
+            const cx = parseFloat(path.getAttribute('data-cx'));
+            const cy = parseFloat(path.getAttribute('data-cy'));
+            
+            let t = 0;
+            if (s.mode === 'circular') {
+                const maxDist = Math.hypot(x2 - x1, y2 - y1);
+                const dist = Math.hypot(cx - x1, cy - y1);
+                t = maxDist > 0 ? dist / maxDist : 0;
+            } else if (s.mode === 'straight') {
+                const ABx = x2 - x1;
+                const ABy = y2 - y1;
+                const APx = cx - x1;
+                const APy = cy - y1;
+                const dot = APx * ABx + APy * ABy;
+                const lenSq = ABx * ABx + ABy * ABy;
+                t = lenSq > 0 ? dot / lenSq : 0;
+            } else {
+                 t = Math.random();
+            }
+            path.setAttribute('fill', getColor(t));
+        });
+    }
+
+    // Helper for Alpha
     function hexToRgb(hex) {
+        if (hex === 'transparent') return { r: 0, g: 0, b: 0, a: 0 }; 
         const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
         return result ? {
             r: parseInt(result[1], 16),
             g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16)
-        } : null;
+            b: parseInt(result[3], 16),
+            a: 1 
+        } : { r:0, g:0, b:0, a:1 };
     }
 
     init();
